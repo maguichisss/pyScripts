@@ -75,8 +75,7 @@ def main(pathcsv1, pathcsv2):
 
 if __name__ == "__main__":
     """Compare 2 CSVs
-    python -m carma_xml_parser.csv2db path/to/data.csv /path/to/csvold
-    python -m carma_xml_parser.csv2db path/to/data.csv /path/to/csvnew
+    python csv2db.py /path/to/csvold /path/to/csvnew
     """
     import sys
     import argparse
@@ -84,7 +83,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compare 2 CSVs")
     parser.add_argument('csvold', type=is_file, help="CSV old to compare")
     parser.add_argument('csvnew', type=is_file, help="CSV new to compare")
-    #parser.add_argument('--inputfile', help="Csv name to insert separated by commas")
     args = parser.parse_args()
 
     try:
