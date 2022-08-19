@@ -75,7 +75,7 @@ def main(pathcsv1, pathcsv2):
 
 if __name__ == "__main__":
     """Compare 2 CSVs
-    python csv2db.py /path/to/csvold /path/to/csvnew
+    python diff_csv.py /path/to/csvold /path/to/csvnew
     """
     import sys
     import argparse
