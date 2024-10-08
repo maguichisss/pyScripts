@@ -38,7 +38,8 @@ db2.execute_query('INSERT INTO users (name) VALUES ("BlanCA")')
 
 db3 = DBConnection()
 db3.execute_query('INSERT INTO users (name) VALUES ("Aris")')
-db3.execute_query("INSERT INTO users (name) VALUES ('MINE')")
+db3.execute_query("INSERT INTO users (name) VALUES ('Milo')")
+db3.execute_query("INSERT INTO users (name) VALUES ('Doly')")
 
 print(db1 is db2)
 print(db1 is db3)
