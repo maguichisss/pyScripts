@@ -45,11 +45,9 @@ nums = [3,2,4]
 target = 6
 twoSum(nums, target)
 
-qq
 inicio = time.time()
 twoSum2(nums, target)
 y = time.time() - inicio
-x,y
 
 nums = [2, 7, 11, 15]
 target = 9
@@ -72,8 +70,8 @@ def isPalindrome(s):
 def get_all_substrings(string):
   length = len(string)
   alist = []
-  for i in xrange(length):
-    for j in xrange(i,length):
+  for i in range(length):
+    for j in range(i,length):
       alist.append(string[i:j + 1]) 
   return alist
 
@@ -175,7 +173,7 @@ def romanToInt(s):
         if found:
             s = s.replace(rom[0], "")
             nums.append(rom[1]*len(found))
-    print sum(nums)
+    print(sum(nums))
 romanToInt('MCMXCIX')
 
 
@@ -210,14 +208,12 @@ def numJewelsInStones(J, S):
     return sum([len(re.findall(s,J)) for s in S])
 
 
-    "".join([s if s.islower() else s.lower() for s in str])
-        for s in str:
-            if s.isupper():
-                sl += s.lower()
-            else:
-                sl += s
-
-
+    #"".join([s if s.islower() else s.lower() for s in str])
+    #for s in str:
+    #    if s.isupper():
+    #        sl += s.lower()
+    #    else:
+    #        sl += s
 
 
 
@@ -231,7 +227,7 @@ def numTilePossibilities(tiles):
     letras = {s:0 for s in tiles}
     for s in tiles:
         letras[s] += 1
-    print letras
+    print(letras)
     return nTile
 
 
@@ -253,7 +249,7 @@ def removeOuterParentheses(S):
         cadenas.append(S)
         levels += 1
 
-    print cadenas, levels
+    print(cadenas, levels)
 
 
 S = "()(())()"
@@ -284,14 +280,14 @@ def subArray(A,sa):
             counter +=1
             if A[i+j] == sa[j]:
                 countSA += 1
-                print i, j, countSA, sa[j]
+                print(i, j, countSA, sa[j])
             else:
                 break
         if countSA == saLen:
-            print ":D", counter
+            print(":D", counter)
             return sum(sa)
 
-    print ":(", counter
+    print(":(", counter)
     return 0
 
 A = [-2, 1, -3, 4, -1, 2, 1, -5, 4]
@@ -309,7 +305,7 @@ inicio = time.time()
 n = 10000
 for i in range(n):
     for j in range(n):
-        print time.time() - inicio, "\t", i,j
+        print(time.time() - inicio, "\t", i,j)
 
 
 # ecuation solver
@@ -370,15 +366,15 @@ var_closure(), closure(parametro="sin variable")()
 
 # WRAPPERS y DECORADORES
 def decorador(funcion): # decorador
-    print '1 Soy el decorador()'
+    print('1 Soy el decorador()')
     def wrapper(): # wrapper
-        print '2 Soy el wrapper()'
+        print('2 Soy el wrapper()')
         return funcion()
     return wrapper
 
 @decorador
 def funcion_decorada():
-    print '3 Soy la funcion_decorada()'
+    print('3 Soy la funcion_decorada()')
 
 funcion_decorada()
 
@@ -399,6 +395,6 @@ def raiz(a):
     import math
     return math.sqrt(a)
 
-print dividir(10,5), "\t", dividir(10,0)
-print raiz(144), "\t", raiz(-144)
+print(dividir(10,5), "\t", dividir(10,0))
+print(raiz(144), "\t", raiz(-144))
 
