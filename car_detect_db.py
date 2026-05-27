@@ -1,10 +1,17 @@
-from ultralytics import YOLO
-import cv2
 import os
-import psycopg2
-from psycopg2.extras import execute_values
-import argparse
+import cv2
 import time
+import argparse
+import psycopg2
+from ultralytics import YOLO
+from psycopg2.extras import execute_values
+
+"""
+Deteccion y conteo de vehiculos/personas usando YOLO (ByteTrack) con
+cruce de linea virtual y persistencia en PostgreSQL.
+
+Soporta streaming RTSP y archivos de video locales.
+"""
 
 # ========= CLI =========
 parser = argparse.ArgumentParser(description="Conteo YOLO (RTSP o video) + PostgreSQL")
@@ -18,8 +25,8 @@ SHOW = args.show
 SKIP = max(1, args.skip)
 
 # ========= CONFIG =========
-LINE_P1 = (800, 0)
-LINE_P2 = (0, 700)
+LINE_P1 = (800, 0)     # punto inicial de la linea virtual de cruce
+LINE_P2 = (0, 700)      # punto final (se usa producto cruzado para detectar cruce)
 #LINE_P1 = (0, 50)
 #LINE_P2 = (1300, 700)
 
@@ -43,7 +50,7 @@ is_rtsp = SOURCE.lower().startswith("rtsp://")
 if is_rtsp:
     os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
     cap = cv2.VideoCapture(SOURCE, cv2.CAP_FFMPEG)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)   # buffer minimo para reducir latencia en RTSP
 else:
     cap = cv2.VideoCapture(SOURCE)
 
@@ -52,7 +59,7 @@ if not cap.isOpened():
 
 # DB
 conn = psycopg2.connect(**DB_CONFIG)
-conn.autocommit = True
+conn.autocommit = True   # cada execute_values se persiste inmediatamente
 cur = conn.cursor()
 
 # Contadores
@@ -69,9 +76,13 @@ buffer = []
 
 # ========= FUNC =========
 def side_of_line(px, py, x1, y1, x2, y2):
+    """Determina a que lado de la linea (x1,y1)-(x2,y2) pertenece el punto (px,py).
+    Retorna >0 (derecha), <0 (izquierda) o 0 (encima de la linea)."""
     return (px - x1) * (y2 - y1) - (py - y1) * (x2 - x1)
 
 def save_batch(rows):
+    """Inserta un lote de detecciones en la tabla `detections` mediante
+    execute_values, ignorando conflictos por duplicado."""
     if not rows:
         return
     query = """
@@ -88,26 +99,26 @@ t0 = time.time()
 while True:
     ret, frame = cap.read()
     if frame is not None and frame.any():
-        frame = cv2.resize(frame, (960, 540))
+        frame = cv2.resize(frame, (960, 540))  # reduce resolucion para acelerar inferencia
 
     if not ret or frame is None:
         if is_rtsp:
-            continue
+            continue   # en RTSP reintenta en vez de abortar (perdida de paquetes)
         else:
-            break
+            break      # en archivo local, fin del video
 
     frame_idx += 1
 
-    # 🚀 MODO RÁPIDO
+    # 🚀 MODO RaPIDO
     if frame_idx % SKIP != 0:
         continue
 
     results = model.track(
         frame,
-        tracker="bytetrack.yaml",
-        classes=[0, 2, 3],  # person, car, motorcycle
-        persist=True,
-        conf=0.3,
+        tracker="bytetrack.yaml",  # tracking multi-objeto para asignar IDs persistentes
+        classes=[0, 2, 3],         # COCO: person(0), car(2), motorcycle(3)
+        persist=True,              # mantiene IDs entre frames
+        conf=0.3,                  # umbral de confianza minimo
         verbose=False
     )
     #results = model(frame, verbose=False)
@@ -133,15 +144,16 @@ while True:
             #    continue
 
             x1, y1, x2, y2 = map(int, box)
-            cx = (x1 + x2) // 2
-            cy = (y1 + y2) // 2
+            cx = (x1 + x2) // 2    # centro X del bounding box
+            cy = (y1 + y2) // 2    # centro Y
 
-            current_side = side_of_line(cx, cy, *LINE_P1, *LINE_P2)
+            current_side = side_of_line(cx, cy, *LINE_P1, *LINE_P2)  # lado actual respecto a la linea
 
             if obj_id in prev_positions:
                 prev_side = prev_positions[obj_id]
 
                 if current_side * prev_side < 0 and obj_id not in counted_ids:
+                    # cambio de signo → cruzo la linea; contar una sola vez
                     counted_ids.add(obj_id)
 
                     if cls == 2:
@@ -155,10 +167,10 @@ while True:
                         buffer.append(("motorcycle", obj_id))
 
                     if len(buffer) >= BATCH_SIZE:
-                        save_batch(buffer)
+                        save_batch(buffer)   # flush cuando se llena el lote
                         buffer.clear()
 
-            prev_positions[obj_id] = current_side
+            prev_positions[obj_id] = current_side  # guardar lado para detectar proximo cruce
 
             # Dibujar solo si SHOW
             if SHOW:
@@ -176,7 +188,7 @@ while True:
 
     # UI solo si SHOW
     if SHOW:
-        cv2.line(frame, LINE_P1, LINE_P2, (255,0,0), 3)
+        cv2.line(frame, LINE_P1, LINE_P2, (255,0,0), 3)  # dibuja linea virtual de cruce
 
         cv2.putText(frame, f"Cars: {total_cars}", (20,40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
@@ -189,16 +201,16 @@ while True:
 
         cv2.imshow("Conteo Multiclase", frame)
 
-        if cv2.waitKey(1) == 27:
+        if cv2.waitKey(1) == 27:   # ESC para salir
             break
 
-# flush final
+# flush final: guarda detecciones que no completaron un lote
 save_batch(buffer)
 
-cap.release()
-cv2.destroyAllWindows()
+cap.release()            # liberar camara/archivo
+cv2.destroyAllWindows()  # cerrar ventanas OpenCV
 cur.close()
-conn.close()
+conn.close()             # cerrar conexion a PostgreSQL
 
 elapsed = time.time() - t0
 print(f"Tiempo total: {elapsed:.2f}s")
