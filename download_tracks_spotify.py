@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Descargador de Playlists de Spotify con METADATOS COMPLETOS y exportación CSV (pandas)
+Descargador de Playlists de Spotify con METADATOS COMPLETOS y exportacion CSV (pandas)
 Uso: python script.py "URL_DE_LA_PLAYLIST"
 Requiere: spotipy, yt-dlp, ffmpeg, mutagen, requests, pandas
 """
@@ -19,9 +19,9 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TRCK, APIC, TCON, COMM, TPE2
 from mutagen.mp3 import MP3
 
-# ========== CONFIGURACIÓN ==========
-SPOTIFY_CLIENT_ID = "X"
-SPOTIFY_CLIENT_SECRET = "X"
+# ========== CONFIGURACIoN ==========
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "")
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
 DOWNLOAD_PATH = "~/descargas"  # Carpeta base
 REDIRECT_URI = "http://127.0.0.1:8080"
 # Los scopes definen los permisos que le pides al usuario:
@@ -69,10 +69,10 @@ def download_album_artwork(url, output_path):
                 f.write(response.content)
             return output_path
     except Exception as e:
-        print(f"    ⚠️ Error al descargar carátula: {e}")
+        print(f"    ⚠️ Error al descargar caratula: {e}")
     return None
 
-def download_track(track_name, artist_name, output_dir, track_info=None, artwork_url=None):
+def download_track(track_name, artist_name, output_dir, track_info=None, artwork_url=None, artwork=False):
     """
     Descarga la caratula, retorna (success, search_query, cover_path)
     """
@@ -81,9 +81,9 @@ def download_track(track_name, artist_name, output_dir, track_info=None, artwork
     cover_path = None
 
     # Descargar caratula (archivo permanente)
-    if artwork_url:
+    if artwork_url and artwork:
         cover_path = os.path.join(output_dir, f"{safe_filename}_cover.jpg")
-        print(f"    🖼️  Guardando carátula permanente...")
+        print(f"    🖼️  Guardando caratula permanente...")
         download_album_artwork(artwork_url, cover_path)
 
         return True, search_query, cover_path
@@ -116,10 +116,10 @@ def get_track_full_info(sp, track):
         artwork_url = album['images'][0]['url'] if album.get('images') else None
         return track_info, artwork_url
     except Exception as e:
-        print(f"    ⚠️ No se pudo obtener información completa: {e}")
+        print(f"    ⚠️ No se pudo obtener informacion completa: {e}")
         return None, None
 
-def download_spotify_playlist(playlist_url):
+def download_spotify_playlist(playlist_url, artwork=False):
 
     if playlist_url:
         client_credentials = SpotifyClientCredentials(
@@ -181,13 +181,13 @@ def download_spotify_playlist(playlist_url):
         track_info, artwork_url = get_track_full_info(sp, track)
 
         if track_info:
-            print(f"    📀 Álbum: {track_info['album']}")
+            print(f"    📀 album: {track_info['album']}")
             print(f"    📅 Año: {track_info['year']}")
-            print(f"    🎸 Género: {track_info['genres']}")
+            print(f"    🎸 Genero: {track_info['genres']}")
             print(f"    🎚️ Pista: {track_info['track_number']}/{track_info['total_tracks']}")
 
         success, search_query, cover_path = download_track(
-            track_name, artist_name, output_dir, track_info, artwork_url
+            track_name, artist_name, output_dir, track_info, artwork_url, artwork
         )
 
         # Crear registro para la DB/CSV
@@ -214,7 +214,7 @@ def download_spotify_playlist(playlist_url):
         if success:
             successful += 1
         else:
-            print(f"    ❌ Falló la descarga")
+            print(f"    ❌ Fallo la descarga")
 
         # Pequeña pausa opcional (descomentar si se desea)
         # time.sleep(2)
@@ -245,7 +245,7 @@ def download_spotify_playlist(playlist_url):
         print(f"📊 Metadatos guardados en: {db_path}")
 
     print(f"\n✅ Completado! {successful}/{len(tracks)} canciones descargadas")
-    print(f"📁 Ubicación: {output_dir}")
+    print(f"📁 Ubicacion: {output_dir}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -254,6 +254,7 @@ if __name__ == "__main__":
     parser.add_argument("--playlist", "-p", help="URL de la playlist de Spotify", default=None)
     parser.add_argument("--output", "-o", help="Carpeta de descarga", default=DOWNLOAD_PATH)
     parser.add_argument("--csv", action="store_true", help="Exportar a CSV en lugar de SQLite")
+    parser.add_argument("--artwork", action="store_true", help="Descargar caratulas")
     args = parser.parse_args()
 
     if args.output:
@@ -263,7 +264,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"📁 Carpeta de descarga: {DOWNLOAD_PATH}\n")
 
-    download_spotify_playlist(args.playlist)
+    download_spotify_playlist(args.playlist, artwork=args.artwork)
 
 
 
